@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRトレンド ダッシュボード</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6366f1;
+      --accent2: #8b5cf6;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --domestic: #3b82f6;
+      --overseas: #8b5cf6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ヘッダー */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .logo h1 { font-size: 18px; font-weight: 700; }
+    .logo span { font-size: 12px; color: var(--muted); }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .last-update { font-size: 12px; color: var(--muted); }
+
+    /* ボタン */
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+    }
+    .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-ghost.active { border-color: var(--accent); color: var(--accent); background: rgba(99,102,241,0.1); }
+
+    /* スピナー */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* メインレイアウト */
+    .main { padding: 20px 24px; max-width: 1400px; margin: 0 auto; }
+
+    /* 統計バー */
+    .stats-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 18px;
+      min-width: 120px;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .stat-value { font-size: 22px; font-weight: 700; }
+
+    /* フィルター＆ソート */
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .controls-top {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .search-box:focus { outline: none; border-color: var(--accent); }
+    .search-box::placeholder { color: var(--muted); }
+
+    .sort-select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .sort-select:focus { outline: none; border-color: var(--accent); }
+
+    .region-btns { display: flex; gap: 6px; }
+
+    .category-filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .cat-btn {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .cat-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .cat-btn.active {
+      border-color: transparent;
+      color: white;
+    }
+
+    /* カテゴリカラー */
+    .cat-採用.active           { background: #3b82f6; }
+    .cat-教育研修.active        { background: #10b981; }
+    .cat-人事制度.active        { background: #f59e0b; }
+    .cat-タレントマネジメント.active { background: #8b5cf6; }
+    .cat-組織開発.active        { background: #ec4899; }
+    .cat-労務法改正.active      { background: #ef4444; }
+    .cat-HRTech.active          { background: #06b6d4; }
+    .cat-人的資本経営.active    { background: #f97316; }
+    .cat-DEI.active             { background: #a855f7; }
+
+    /* グリッド */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+
+    /* カードスタイル */
+    .news-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+    .news-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .news-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(99,102,241,0.15);
+    }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .card-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-domestic { background: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .badge-overseas { background: rgba(139,92,246,0.2); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+    .importance-badge { font-size: 14px; }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .card-title a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .card-title a:hover { color: #818cf8; text-decoration: underline; }
+
+    .card-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+    .card-source { font-size: 11px; color: var(--muted); }
+    .card-date { font-size: 11px; color: var(--muted); }
+    .card-cat {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--muted);
+    }
+
+    /* 重要度ラインカラー */
+    .imp-high::before { background: #ef4444; }
+    .imp-mid::before  { background: #f59e0b; }
+    .imp-low::before  { background: var(--border); }
+
+    /* ローディング */
+    .loading-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(15,17,23,0.8);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .loading-overlay.show { display: flex; }
+    .loading-big {
+      width: 40px; height: 40px;
+      border: 3px solid rgba(99,102,241,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .loading-text { color: var(--muted); font-size: 14px; }
+
+    /* エラーバナー */
+    .error-banner {
+      display: none;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .error-banner.show { display: block; }
+
+    /* 空状態 */
+    .empty {
+      text-align: center;
+      padding: 60px;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty h3 { font-size: 16px; margin-bottom: 8px; }
+    .empty p { font-size: 13px; }
+
+    /* フッター */
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    /* スクロールトップ */
+    .scroll-top {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      width: 40px; height: 40px;
+      background: var(--accent);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(99,102,241,0.4);
+      transition: all 0.2s;
+      z-index: 50;
+    }
+    .scroll-top.show { display: flex; }
+    .scroll-top:hover { transform: scale(1.1); }
+
+    /* レスポンシブ */
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; }
+      .main { padding: 16px; }
+      .grid { grid-template-columns: 1fr; }
+      .logo h1 { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-big"></div>
+  <div class="loading-text" id="loadingText">ニュースを取得中...</div>
+</div>
+
+<!-- ヘッダー -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">📊</div>
+    <div>
+      <h1>HRトレンド ダッシュボード</h1>
+      <span>国内・海外 人事ニュースまとめ</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="last-update" id="lastUpdate">未取得</span>
+    <button class="btn btn-primary" id="updateBtn" onclick="fetchAllNews()">
+      <span id="updateBtnIcon">↻</span> 更新
+    </button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- エラーバナー -->
+  <div class="error-banner" id="errorBanner"></div>
+
+  <!-- 統計 -->
+  <div class="stats-bar">
+    <div class="stat-card">
+      <div class="stat-label">総記事数</div>
+      <div class="stat-value" id="statTotal">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">国内</div>
+      <div class="stat-value" id="statDomestic" style="color:#60a5fa">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">海外</div>
+      <div class="stat-value" id="statOverseas" style="color:#a78bfa">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">重要度高</div>
+      <div class="stat-value" id="statHigh" style="color:#f87171">-</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">表示中</div>
+      <div class="stat-value" id="statFiltered">-</div>
+    </div>
+  </div>
+
+  <!-- コントロール -->
+  <div class="controls">
+    <div class="controls-top">
+      <input type="text" class="search-box" id="searchInput" placeholder="🔍 キーワードで検索..." oninput="applyFilters()">
+      <div class="region-btns">
+        <button class="btn btn-ghost active" id="rgAll"    onclick="setRegion('all')">全て</button>
+        <button class="btn btn-ghost"         id="rgDom"    onclick="setRegion('国内')">🇯🇵 国内</button>
+        <button class="btn btn-ghost"         id="rgOvs"    onclick="setRegion('海外')">🌐 海外</button>
+      </div>
+      <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+        <option value="date_desc">新しい順</option>
+        <option value="date_asc">古い順</option>
+        <option value="imp_desc">重要度順</option>
+        <option value="source">ソース順</option>
+      </select>
+    </div>
+    <div class="category-filters" id="catFilters">
+      <button class="cat-btn active" data-cat="all" onclick="setCat('all', this)">すべて</button>
+      <button class="cat-btn cat-採用"           data-cat="採用"             onclick="setCat('採用', this)">採用</button>
+      <button class="cat-btn cat-教育研修"        data-cat="教育研修・育成"    onclick="setCat('教育研修・育成', this)">教育研修・育成</button>
+      <button class="cat-btn cat-人事制度"        data-cat="人事制度"          onclick="setCat('人事制度', this)">人事制度</button>
+      <button class="cat-btn cat-タレントマネジメント" data-cat="タレントマネジメント" onclick="setCat('タレントマネジメント', this)">タレントマネジメント</button>
+      <button class="cat-btn cat-組織開発"        data-cat="組織開発"          onclick="setCat('組織開発', this)">組織開発</button>
+      <button class="cat-btn cat-労務法改正"      data-cat="労務・法改正"      onclick="setCat('労務・法改正', this)">労務・法改正</button>
+      <button class="cat-btn cat-HRTech"          data-cat="HRTech"            onclick="setCat('HRTech', this)">HRTech</button>
+      <button class="cat-btn cat-人的資本経営"    data-cat="人的資本経営"      onclick="setCat('人的資本経営', this)">人的資本経営</button>
+      <button class="cat-btn cat-DEI"             data-cat="DE&I"              onclick="setCat('DE&I', this)">DE&I</button>
+    </div>
+  </div>
+
+  <!-- ニュースグリッド -->
+  <div class="grid" id="newsGrid"></div>
+</div>
+
+<footer>HRトレンド ダッシュボード &nbsp;|&nbsp; データ出典: 各RSSフィード &nbsp;|&nbsp; 個人閲覧用</footer>
+
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// =============================================
+// RSS フィード定義
+// =============================================
+const FEEDS = [
+  // 国内
+  { url: 'https://jinjibu.jp/rss/',                  source: '日本の人事部',         region: '国内' },
+  { url: 'https://hrnote.jp/feed/',                   source: 'HR NOTE',              region: '国内' },
+  { url: 'https://mag.smarthr.jp/feed/',              source: 'SmartHR Mag',          region: '国内' },
+  { url: 'https://kn.itmedia.co.jp/kn/rss/kn_hrtech.rdf', source: 'ITmedia HRTech', region: '国内' },
+  { url: 'https://www.works-i.com/rss/',              source: 'Works Institute',       region: '国内' },
+  // 海外
+  { url: 'https://www.shrm.org/rss/pages/rss.aspx',  source: 'SHRM',                 region: '海外' },
+  { url: 'https://www.hrdive.com/feeds/news/',        source: 'HR Dive',              region: '海外' },
+  { url: 'https://feeds.hbr.org/harvardbusiness',     source: 'Harvard Business Review', region: '海外' },
+  { url: 'https://www.mckinsey.com/capabilities/people-and-organizational-performance/our-insights/rss', source: 'McKinsey People', region: '海外' },
+  { url: 'https://rss.peoplemanagement.co.uk/home.rss', source: 'People Management', region: '海外' },
+];
+
+// CORS プロキシ（複数用意してフォールバック）
+const PROXIES = [
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+
+// =============================================
+// カテゴリ判定キーワード
+// =============================================
+const CAT_RULES = [
+  {
+    cat: '採用',
+    kw: ['採用','求人','リクルート','中途','新卒','転職','スカウト','ヘッドハンティング',
+         'recruitment','hiring','talent acquisition','recruit','onboarding','job','candidate','applicant']
+  },
+  {
+    cat: '教育研修・育成',
+    kw: ['研修','教育','育成','スキル','学習','ラーニング','コーチング','メンタリング','OJT','eラーニング',
+         'learning','training','development','upskilling','reskilling','L&D','coaching','mentoring','capability']
+  },
+  {
+    cat: '人事制度',
+    kw: ['人事制度','評価制度','給与','報酬','昇進','昇格','グレード','人事考課','職種','ジョブ型',
+         'compensation','salary','pay','performance review','job description','grading','promotion','remuneration']
+  },
+  {
+    cat: 'タレントマネジメント',
+    kw: ['タレント','サクセッション','後継','リテンション','離職','エンゲージメント','モチベーション',
+         'talent management','succession','retention','engagement','motivation','high potential','flight risk']
+  },
+  {
+    cat: '組織開発',
+    kw: ['組織開発','組織文化','カルチャー','変革','OD','チームビルディング','心理的安全','コミュニケーション',
+         'organizational development','org design','culture','change management','team','psychological safety','OKR']
+  },
+  {
+    cat: '労務・法改正',
+    kw: ['労務','法改正','労働法','残業','働き方改革','育休','産休','ハラスメント','社会保険','雇用保険',
+         'labor law','employment law','compliance','harassment','overtime','leave','workers','legislation','regulation','maternity','paternity']
+  },
+  {
+    cat: 'HRTech',
+    kw: ['HRTech','HR Tech','AI','人工知能','SaaS','HRIS','HCM','DX','デジタル','テクノロジー','ツール',
+         'technology','software','automation','analytics','data','platform','system','tool','chatbot','generative AI']
+  },
+  {
+    cat: '人的資本経営',
+    kw: ['人的資本','ESG','開示','サステナビリティ','非財務','ISO 30414',
+         'human capital','ESG','sustainability','disclosure','workforce reporting','ISO 30414','wellbeing','well-being']
+  },
+  {
+    cat: 'DE&I',
+    kw: ['ダイバーシティ','インクルージョン','DE&I','DEI','女性活躍','外国人','障害','LGBT','ジェンダー',
+         'diversity','inclusion','equity','gender','women','disability','belonging','LGBTQ','minority']
+  },
+];
+
+// =============================================
+// 重要度スコア
+// =============================================
+const IMP_KEYWORDS_HIGH = [
+  '法改正','改正','新制度','義務化','施行','ガイドライン','厚生労働省','経済産業省',
+  'law','legislation','mandatory','regulation','guideline','report','survey','research','trend'
+];
+const IMP_KEYWORDS_MID = [
+  '調査','統計','レポート','白書','事例','実態','ランキング',
+  'study','analysis','insight','best practice','case study','benchmark'
+];
+
+function calcImportance(title, desc='') {
+  const txt = (title + ' ' + desc).toLowerCase();
+  for (const kw of IMP_KEYWORDS_HIGH) {
+    if (txt.includes(kw.toLowerCase())) return 3;
+  }
+  for (const kw of IMP_KEYWORDS_MID) {
+    if (txt.includes(kw.toLowerCase())) return 2;
+  }
+  return 1;
+}
+
+function detectCategory(title, desc='') {
+  const txt = (title + ' ' + desc).toLowerCase();
+  for (const rule of CAT_RULES) {
+    if (rule.kw.some(k => txt.includes(k.toLowerCase()))) return rule.cat;
+  }
+  return 'その他';
+}
+
+// =============================================
+// RSS パーサー
+// =============================================
+async function fetchFeed(feed, proxyIdx = 0) {
+  if (proxyIdx >= PROXIES.length) return [];
+  const proxyUrl = PROXIES[proxyIdx](feed.url);
+  try {
+    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+
+    let xmlText;
+    // allorigins returns JSON { contents: "..." }
+    if (proxyUrl.includes('allorigins')) {
+      const json = await res.json();
+      xmlText = json.contents;
+    } else {
+      xmlText = await res.text();
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'text/xml');
+
+    // RSS 2.0 or Atom
+    const items = doc.querySelectorAll('item, entry');
+    const result = [];
+    items.forEach(item => {
+      const title = item.querySelector('title')?.textContent?.trim() || '';
+      const link  = item.querySelector('link')?.textContent?.trim()
+                 || item.querySelector('link')?.getAttribute('href') || '';
+      const desc  = item.querySelector('description, summary, content')?.textContent?.trim() || '';
+      const pubDate = item.querySelector('pubDate, published, updated, dc\\:date')?.textContent?.trim() || '';
+
+      if (!title || !link) return;
+
+      // HTMLタグを除去
+      const cleanDesc = desc.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').slice(0, 200);
+
+      const date = pubDate ? new Date(pubDate) : new Date(0);
+      const category = detectCategory(title, cleanDesc);
+      const importance = calcImportance(title, cleanDesc);
+
+      result.push({
+        title, link, desc: cleanDesc,
+        source: feed.source, region: feed.region,
+        date, dateStr: formatDate(date),
+        category, importance,
+        id: btoa(encodeURIComponent(link)).slice(0, 20)
+      });
+    });
+    return result;
+  } catch (e) {
+    console.warn(`Feed ${feed.source} proxy ${proxyIdx} failed:`, e.message);
+    return fetchFeed(feed, proxyIdx + 1);
+  }
+}
+
+function formatDate(d) {
+  if (!d || d.getFullYear() < 2000) return '-';
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 3600) return `${Math.floor(diff/60)}分前`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}時間前`;
+  if (diff < 86400*7) return `${Math.floor(diff/86400)}日前`;
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// =============================================
+// 状態管理
+// =============================================
+let allArticles = [];
+let currentRegion = 'all';
+let currentCat = 'all';
+
+async function fetchAllNews() {
+  const btn = document.getElementById('updateBtn');
+  const icon = document.getElementById('updateBtnIcon');
+  const overlay = document.getElementById('loadingOverlay');
+  const loadTxt = document.getElementById('loadingText');
+  const errBanner = document.getElementById('errorBanner');
+
+  btn.disabled = true;
+  icon.innerHTML = '<div class="spinner"></div>';
+  overlay.classList.add('show');
+  errBanner.classList.remove('show');
+
+  const results = [];
+  const errors = [];
+
+  for (let i = 0; i < FEEDS.length; i++) {
+    const feed = FEEDS[i];
+    loadTxt.textContent = `取得中 (${i+1}/${FEEDS.length}): ${feed.source}`;
+    try {
+      const items = await fetchFeed(feed);
+      results.push(...items);
+    } catch (e) {
+      errors.push(feed.source);
+    }
+  }
+
+  allArticles = results;
+
+  // 重複除去（URLベース）
+  const seen = new Set();
+  allArticles = allArticles.filter(a => {
+    if (seen.has(a.link)) return false;
+    seen.add(a.link);
+    return true;
+  });
+
+  if (errors.length > 0) {
+    errBanner.textContent = `⚠️ 一部フィードの取得に失敗しました: ${errors.join(', ')}`;
+    errBanner.classList.add('show');
+  }
+
+  // ローカルストレージに保存
+  try {
+    localStorage.setItem('hr_articles', JSON.stringify(allArticles.map(a => ({...a, date: a.date?.toISOString()}))));
+    localStorage.setItem('hr_last_update', new Date().toISOString());
+  } catch(e) {}
+
+  updateStats();
+  applyFilters();
+  updateLastUpdate();
+
+  overlay.classList.remove('show');
+  btn.disabled = false;
+  icon.textContent = '↻';
+}
+
+function loadFromCache() {
+  try {
+    const raw = localStorage.getItem('hr_articles');
+    const lu = localStorage.getItem('hr_last_update');
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    allArticles = data.map(a => ({...a, date: a.date ? new Date(a.date) : new Date(0)}));
+    updateStats();
+    applyFilters();
+    if (lu) {
+      const d = new Date(lu);
+      document.getElementById('lastUpdate').textContent = '最終更新: ' + formatDate(d);
+    }
+    return true;
+  } catch(e) { return false; }
+}
+
+function updateLastUpdate() {
+  const d = new Date();
+  document.getElementById('lastUpdate').textContent = '最終更新: ' + formatDate(d);
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = allArticles.length;
+  document.getElementById('statDomestic').textContent = allArticles.filter(a => a.region === '国内').length;
+  document.getElementById('statOverseas').textContent = allArticles.filter(a => a.region === '海外').length;
+  document.getElementById('statHigh').textContent = allArticles.filter(a => a.importance === 3).length;
+}
+
+// =============================================
+// フィルター & ソート & レンダリング
+// =============================================
+function setRegion(r) {
+  currentRegion = r;
+  ['rgAll','rgDom','rgOvs'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const map = { all: 'rgAll', '国内': 'rgDom', '海外': 'rgOvs' };
+  document.getElementById(map[r]).classList.add('active');
+  applyFilters();
+}
+
+function setCat(cat, el) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const sort   = document.getElementById('sortSelect').value;
+
+  let filtered = allArticles.filter(a => {
+    if (currentRegion !== 'all' && a.region !== currentRegion) return false;
+    if (currentCat !== 'all' && a.category !== currentCat) return false;
+    if (search) {
+      const hay = (a.title + ' ' + a.desc + ' ' + a.source).toLowerCase();
+      // AND検索（スペース区切り）
+      return search.split(/\s+/).every(w => hay.includes(w));
+    }
+    return true;
+  });
+
+  // ソート
+  switch (sort) {
+    case 'date_desc':  filtered.sort((a,b) => b.date - a.date); break;
+    case 'date_asc':   filtered.sort((a,b) => a.date - b.date); break;
+    case 'imp_desc':   filtered.sort((a,b) => b.importance - a.importance || b.date - a.date); break;
+    case 'source':     filtered.sort((a,b) => a.source.localeCompare(b.source)); break;
+  }
+
+  document.getElementById('statFiltered').textContent = filtered.length;
+  renderCards(filtered);
+}
+
+const CAT_COLORS = {
+  '採用':             '#3b82f6',
+  '教育研修・育成':   '#10b981',
+  '人事制度':         '#f59e0b',
+  'タレントマネジメント': '#8b5cf6',
+  '組織開発':         '#ec4899',
+  '労務・法改正':     '#ef4444',
+  'HRTech':           '#06b6d4',
+  '人的資本経営':     '#f97316',
+  'DE&I':             '#a855f7',
+  'その他':           '#64748b',
+};
+
+function renderCards(articles) {
+  const grid = document.getElementById('newsGrid');
+  if (articles.length === 0) {
+    grid.innerHTML = `
+      <div class="empty" style="grid-column:1/-1">
+        <div class="empty-icon">🔍</div>
+        <h3>記事が見つかりません</h3>
+        <p>条件を変更するか、「更新」ボタンを押してください</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = articles.map(a => {
+    const impClass = a.importance === 3 ? 'imp-high' : a.importance === 2 ? 'imp-mid' : 'imp-low';
+    const impIcon  = a.importance === 3 ? '🔴' : a.importance === 2 ? '🟡' : '';
+    const regionBadge = a.region === '国内'
+      ? '<span class="badge badge-domestic">🇯🇵 国内</span>'
+      : '<span class="badge badge-overseas">🌐 海外</span>';
+    const catColor = CAT_COLORS[a.category] || '#64748b';
+    const catStyle = `background:${catColor}22;color:${catColor};border:1px solid ${catColor}44`;
+
+    return `
+    <div class="news-card ${impClass}">
+      <div class="card-header">
+        <div class="card-badges">
+          ${regionBadge}
+          <span class="badge" style="${catStyle}">${a.category}</span>
+        </div>
+        ${impIcon ? `<span class="importance-badge" title="重要度高">${impIcon}</span>` : ''}
+      </div>
+      <div class="card-title">
+        <a href="${escHtml(a.link)}" target="_blank" rel="noopener noreferrer">${escHtml(a.title)}</a>
+      </div>
+      ${a.desc ? `<div class="card-desc">${escHtml(a.desc)}</div>` : ''}
+      <div class="card-footer">
+        <span class="card-source">📰 ${escHtml(a.source)}</span>
+        <span class="card-date">🕐 ${a.dateStr}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// =============================================
+// スクロールトップ
+// =============================================
+window.addEventListener('scroll', () => {
+  document.getElementById('scrollTop').classList.toggle('show', window.scrollY > 400);
+});
+
+// =============================================
+// 初期化
+// =============================================
+window.addEventListener('DOMContentLoaded', () => {
+  // キャッシュがあれば表示、なければ自動取得
+  if (!loadFromCache()) {
+    fetchAllNews();
+  }
+});
+</script>
+</body>
+</html>
